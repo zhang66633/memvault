@@ -620,6 +620,37 @@ consolidate dry-run 0.97–1.48 s）。
 「用户说的」与「助手做的」；只能靠提示词明说，并在入库时用**类型**兜一层确定性。
 类型不只是标签——它表达的是「这类内容该不该进用户画像」。
 
+## 附：首次入库与发布准备（2026-09-28）
+
+项目在磁盘上跨了 16 个 sprint 却从未纳入版本控制，这一轮补上：
+
+- `git init -b main`，**首个提交 `2aee9aa` 是「今日快照」而非伪造的 16 步历史**——真实的
+  演进过程一直在这份 DEVLOG 里，硬拆只会编造时间线。
+- 远端：**私有**仓库 `github.com/zhang66633/memvault`（与 `.dsh-memory` 的可见性一致）。
+  推送用 `~/.dsh/bin/gh-api-push.mjs`（本机 `github.com:443` 不通、`api.github.com` 通），
+  远端 commit SHA 与本地逐字节一致。
+- 忽略项：`.venv/`（92 MB）、`data/` 与 `*.db`（库里有个人记忆）、`.env`；用
+  `git check-ignore -v` 逐条验证规则真的命中，并在推送后逐文件比对远端树（59 = 59，
+  且不含任何被禁文件）。**克隆出来的是空库**：`data/` 首次运行时自动创建，换机器要单独搬 DB。
+- 新增 `.gitattributes`：仓内统一 LF（本项目有部署到 Linux 的说明），只有 `.bat/.cmd` 保持
+  CRLF（cmd.exe 对纯 LF 批处理在 `goto`/标签上有已知毛病）。
+
+### 发布前扫描发现了什么（若要转公开）
+
+`git grep` 只扫已跟踪文件，结果：**凭据零命中**（`.env` 未入库，`.env.example` 里 key 全为空）。
+只有四处是「公开才敏感」的，且其中两处同时是可移植性缺陷：
+
+| 位置 | 内容 | 转公开时要做的 |
+|---|---|---|
+| `docs/DEVLOG.md`（Sprint 13 一节）、`docs/architecture_overview.html/.mmd` | 学校算力网关 `https://token.nau.edu.cn/v1` 与所用模型名 | 换成通用的「校园网 OpenAI 兼容网关」；**技术结论保留**（`chat_template_kwargs.enable_thinking=false` 那条坑与网关无关，对任何 one-api/new-api 类网关都适用）|
+| `mcp_launcher.py` | `sys.path.insert(0, r"D:\Claude_code\memory")` 写死本机路径 | 改成按 `__file__` 推导（顺带修掉真缺陷：别人克隆后这行指向不存在的目录）|
+| `tests/test_scopes.py` | 用 `D:\Claude_code\memory` 断言 slug | 改用临时目录构造（顺带修掉真缺陷：这个测试在 Linux 上会失败）|
+| `docs/DEVLOG.md` / `tests/test_mcp_subprocess.py` | 作用域 id `lenovo`（本机 Windows 账号名） | 换 `alice` 之类的通用名 |
+
+顺带修掉一处**我自己刚引入的**：`tests/test_memory_typing.py` 的反例表里曾原样抄了作者的
+真实身份行，已改为中性 fixture（提交 `590c5dd`）。这条是扫描发现的、不是测试发现的——
+**隐私问题属于测试套件抓不到的那一类**，值得单列一次扫描。
+
 
 
 
