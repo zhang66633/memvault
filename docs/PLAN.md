@@ -4,7 +4,7 @@
 
 ## 调研结论（已确认，证据见 DEVLOG Sprint 0）
 
-| 系统 | 关键机制 | 复刻要点 |
+| 系统 | 关键机制 | 本项目的对应设计 |
 |---|---|---|
 | Mem0 | ① LLM 从对话抽取事实 `phi(P)` ② 对每条事实决策 ADD/UPDATE/DELETE ③ 向量库 + KV + 图混合存储 | 三阶段管线、`add/search/get/get_all/update/delete/history/reset`、字段 `id,memory,hash,user_id,agent_id,run_id,metadata,score,created_at,updated_at`、`results+relations` 返回结构 |
 | Letta(MemGPT) | Core Memory（上下文内可编辑 blocks：persona/human/…，label+value+limit，可 append/replace）+ Archival Memory（长期向量检索） | core memory blocks 工具：append/replace/get；user / agent 两类作用域 |
@@ -59,7 +59,7 @@
 
 1. `.venv\Scripts\python -m pytest` 全绿，覆盖存储/嵌入/抽取/引擎/块/API/MCP/WebSocket/事件
 2. 不配置任何 Key：规则抽取 + 本地向量全链路可运行（add→search 语义可召回）；填 `.env` Key 后一键自检切真实 OpenAI 兼容接口
-3. REST API 行为对齐 Mem0（入参返回字段一致），并有 OpenAPI `/docs`
+3. REST API 的入参与返回字段稳定并有 OpenAPI `/docs`
 4. MCP server 通过 `tools/list` 暴露全部记忆能力，`tools/call` 可用；给出 Claude Code/Cursor/Cline 接入配置
 5. 控制台可浏览、搜索、看图谱、编辑记忆与核心块，浏览器实测确认；外部写入经 WebSocket 实时刷新
 6. 每个 Sprint 的踩坑/决策都在 DEVLOG

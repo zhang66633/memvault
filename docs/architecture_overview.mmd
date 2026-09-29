@@ -1,4 +1,4 @@
-%% MemVault 全面图景 v0.3.0 —— Mem0 三阶段管线 + Letta 核心块，一个共享库
+%% MemVault 全面图景 v0.3.0 —— 抽取/判定/检索三阶段 + 常驻核心块，一个共享库
 flowchart TB
   subgraph L1["接入层 · 主流编程智能体 / 任意客户端"]
     CC["Claude Code · Cursor · Cline<br/>命令行 mcp add，MCP stdio(JSON-RPC 2.0)<br/>不同项目 cwd 自动隔离"]
@@ -7,7 +7,7 @@ flowchart TB
   end
 
   subgraph L2["接口层 · 两协议共用一个引擎"]
-    MCP["mcp_server.py<br/>MCP stdio · 13 个 tools<br/>add search get get_all update delete delete_all<br/>history relations stats reset whoami + 核心块"]
+    MCP["mcp_server.py<br/>MCP stdio · 16 个 tools<br/>memory_add / search / get / get_all / update / delete<br/>history / relations / stats / whoami<br/>core_memory_get / append / replace / delete<br/>memory_consolidate / purge"]
     API["api.py · FastAPI<br/>REST: /memories /search /blocks /history<br/>/relations /stats /users /whoami /health"]
     WS["WebSocket /api/v1/ws<br/>?user_id=&agent_id=&run_id= 作用域过滤<br/>断线自动重连"]
   end
@@ -17,7 +17,7 @@ flowchart TB
     EX["① Extract 事实抽取<br/>rule 规则器(离线) 或 LLM(qwen3.8)<br/>只取 user 轮次"]
     DE["② Decide 记忆决策<br/>ADD / UPDATE / DELETE / NONE<br/>余弦超阈值自动更新/删除"]
     RET["③ Retrieve 混合检索<br/>0.7·向量cosine + 0.3·关键词<br/>作用域/元数据过滤，Top-k 注入上下文"]
-    CB["Core Blocks 核心记忆块<br/>persona / human / role<br/>label + value + value_limit（复刻 Letta）"]
+    CB["Core Blocks 核心记忆块<br/>persona / human / role<br/>label + value + value_limit（常驻上下文）"]
     SCO["Scope 三作用域隔离<br/>user_id / agent_id / run_id<br/>省略时默认 user=系统用户, agent=当前项目路径"]
     EX --> DE --> RET
   end

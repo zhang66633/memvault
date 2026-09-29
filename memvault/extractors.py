@@ -1,4 +1,4 @@
-"""Fact extraction (Mem0 pipeline stage 1).
+"""Fact extraction (pipeline stage 1).
 
 - RuleExtractor (default): deterministic regex extraction for common zh/en
   self-disclosure patterns. Zero network, fully testable.

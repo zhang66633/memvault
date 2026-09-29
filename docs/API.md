@@ -2,7 +2,7 @@
 
 Base URL 默认 `http://127.0.0.1:8780`，所有写/读接口请求体均为 `application/json`。
 服务启动：`.venv\Scripts\python run_server.py`。交互文档：`GET /docs`（Swagger）。
-字段与返回结构对齐 Mem0（`results` / `relations`）。
+字段与返回结构保持稳定（`results` / `relations`），便于既有客户端直接接入。
 
 ## 记忆 Memories
 
@@ -85,7 +85,7 @@ Base URL 默认 `http://127.0.0.1:8780`，所有写/读接口请求体均为 `ap
 | GET | `/api/v1/users` | `{"users":[], "agents":[], "runs":[]}` |
 | GET | `/api/v1/stats` | `total_memories / users / agents / runs / by_type / total_blocks` |
 
-## 核心记忆块 Core Memory Blocks（复刻 Letta）
+## 核心记忆块 Core Memory Blocks
 
 作用域：`scope_type ∈ user|agent`，`scope_id` 任意。同作用域下 `label` 唯一。
 

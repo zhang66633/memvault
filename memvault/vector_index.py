@@ -1,6 +1,6 @@
 """Hybrid retrieval: dense cosine + lexical keyword overlap.
 
-Mirrors Mem0's "vector store + keyword search" blend without external services:
+Both channels are blended in one score, with no external service involved:
     score = vector_weight * cosine + keyword_weight * keyword_score
 
 Embeddings are persisted as float32 blobs by the storage layer.

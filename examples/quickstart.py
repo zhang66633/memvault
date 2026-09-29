@@ -41,7 +41,7 @@ print("\n检索：")
 for h in hits["results"]:
     print(f" - {h['memory']}  (score={h['score']:.3f})")
 
-# 3) Agent-side (Letta-style) persistent core memory blocks
+# 3) Agent-side persistent core memory blocks (always visible in context)
 engine.core_append("user", "li-lei", BlockIn(label="persona", value="喜欢简洁回答，先结论后理由。", value_limit=2000))
 engine.core_append("agent", "repo-agent", BlockIn(label="role", value="仓库维护智能体，回复用中文。", value_limit=2000))
 print("\n用户核心块：", [b["label"] for b in engine.core_get("user", "li-lei")])

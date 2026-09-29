@@ -1,6 +1,6 @@
 # MemVault 架构设计
 
-复刻 Mem0 的「三阶段记忆管线」与 Letta 的「核心记忆块」，以 MCP 对外暴露。
+三条阶段——**抽取 → 判定 → 检索**——外加一组常驻核心记忆块，以 MCP / REST / CLI 对外暴露。
 
 ```
 编程智能体 (Claude Code / Cursor / Cline / ...)
@@ -44,7 +44,7 @@ embeddings.py ── LocalEmbedder(默认, 确定性哈希向量 + 字符 n-gram
                   OpenAIEmbedder(可选, /v1/embeddings 兼容接口)
 ```
 
-## 记忆条目（对齐 Mem0 Memory 对象）
+## 记忆条目（Memory 对象）
 
 | 字段 | 说明 |
 |---|---|
@@ -57,7 +57,7 @@ embeddings.py ── LocalEmbedder(默认, 确定性哈希向量 + 字符 n-gram
 | `score` | 检索相关度（仅检索结果中填充） |
 | `created_at` / `updated_at` | ISO 时间 |
 
-## 核心记忆块（对齐 Letta Core Memory Blocks）
+## 核心记忆块（Core Memory Blocks）
 
 - `scope_type ∈ {user, agent}`、`scope_id`、`label`（如 persona / human）、`value`、`value_limit`
 - 同 scope 下 label 唯一；超 `value_limit` 由智能体负责压缩（服务端只做校验与错误提示）

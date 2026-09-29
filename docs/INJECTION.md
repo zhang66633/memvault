@@ -34,7 +34,7 @@ MCP 是 pull 模型——服务端只暴露 14 个工具，**是否读、什么�
 
 ## ② 核心记忆块（常驻上下文）
 
-`core_memory_*` 是 Letta 式的 `label + value + value_limit` 常驻块，例如 `persona`（我的偏好）、
+`core_memory_*` 是 `label + value + value_limit` 的常驻块，例如 `persona`（我的偏好）、
 `human`（用户是谁）、`project`（本项目约定）。
 
 **MemVault 只存不拼**——架构文档里写的「可作为 system prompt 上下文」是能力描述，

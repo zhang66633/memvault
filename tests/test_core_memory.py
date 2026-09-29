@@ -1,4 +1,4 @@
-"""Sprint 5: Letta-style core memory blocks through the engine."""
+"""Sprint 5: core memory blocks (always-visible context) through the engine."""
 from __future__ import annotations
 
 import pytest

@@ -1,4 +1,4 @@
-"""The MemVault memory engine: Mem0-style three-stage pipeline.
+"""The MemVault memory engine: a three-stage pipeline.
 
     extract  ->  update decision (ADD / UPDATE / DELETE)  ->  retrieve
 
@@ -7,8 +7,7 @@
   every decision is audited in `history`, contradictions create `relations`
 - retrieve: hybrid vector + keyword scoring with scope / metadata filters
 
-One of user_id / agent_id / run_id is required for scoped operations,
-mirroring the Mem0 SDK contract.
+One of user_id / agent_id / run_id is required for scoped operations.
 """
 from __future__ import annotations
 
@@ -650,7 +649,7 @@ class MemoryEngine:
         result["remaining"] = self.storage.count_memories(user_id, agent_id, run_id)
         return result
 
-    # ---------------- core memory blocks (Letta-style) ----------------
+    # ---------------- core memory blocks (always-visible context) ----------------
 
     def core_get(self, scope_type: str, scope_id: str) -> list[dict[str, Any]]:
         return self.storage.list_blocks(scope_type, scope_id)

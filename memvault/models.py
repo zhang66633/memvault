@@ -1,4 +1,4 @@
-"""Pydantic models for the MemVault HTTP API (shape mirrors the Mem0 SDK)."""
+"""Pydantic models for the MemVault HTTP API (stable, platform-conventional shapes)."""
 from __future__ import annotations
 
 from typing import Any, Literal, Optional

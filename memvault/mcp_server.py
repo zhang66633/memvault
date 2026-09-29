@@ -150,7 +150,7 @@ def tools_spec() -> list[dict[str, Any]]:
         },
         {
             "name": "core_memory_get",
-            "description": "读取上下文内核心记忆块（对齐 Letta Core Memory）：如 persona / human。",
+            "description": "读取常驻上下文的核心记忆块：如 persona（偏好）/ human（用户是谁）/ project（项目约定）。",
             "inputSchema": {
                 "type": "object",
                 "properties": {

@@ -1,4 +1,8 @@
-"""MemVault HTTP REST API (path shape mirrors the Mem0 platform API).
+"""MemVault HTTP REST API.
+
+The path and response shape (`/api/v1/memories/` with a trailing slash, results
+carried as `results` + `relations`) is kept stable on purpose, so clients written
+against the established memory-platform convention work unchanged.
 
 Run: python run_server.py   ->  http://127.0.0.1:8780
 Dashboard:                 ->  /dashboard/
