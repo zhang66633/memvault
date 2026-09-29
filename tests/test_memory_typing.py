@@ -31,7 +31,9 @@ MEASURED = [
 
 STILL_USER = [
     "用户喜欢简洁的回答。",
-    "用户的名字是哲，南京审计大学软件工程专业，大二学生。",
+    # neutral fixture on purpose: the first draft of this file used the author's
+    # real profile line as a counter-example, which put personal data in a test.
+    "用户的名字是张三，在读软件工程专业，大二学生。",
     "用户住在南京。",
     "用户对花生过敏。",
     "用户会 Python。",
