@@ -1,0 +1,73 @@
+%% MemVault 全面图景 v0.3.0 —— Mem0 三阶段管线 + Letta 核心块，一个共享库
+flowchart TB
+  subgraph L1["接入层 · 主流编程智能体 / 任意客户端"]
+    CC["Claude Code · Cursor · Cline<br/>命令行 mcp add，MCP stdio(JSON-RPC 2.0)<br/>不同项目 cwd 自动隔离"]
+    HTTP["Python · curl · 任意语言<br/>HTTP REST，跨语言跨进程"]
+    DASH["可视化控制台 :8780/dashboard/<br/>记忆卡片 / 关系图 / 核心块 / 统计<br/>WebSocket 实时刷新"]
+  end
+
+  subgraph L2["接口层 · 两协议共用一个引擎"]
+    MCP["mcp_server.py<br/>MCP stdio · 13 个 tools<br/>add search get get_all update delete delete_all<br/>history relations stats reset whoami + 核心块"]
+    API["api.py · FastAPI<br/>REST: /memories /search /blocks /history<br/>/relations /stats /users /whoami /health"]
+    WS["WebSocket /api/v1/ws<br/>?user_id=&agent_id=&run_id= 作用域过滤<br/>断线自动重连"]
+  end
+
+  subgraph ENG["核心引擎层 · MemoryEngine（唯一实例，读写都走它）"]
+    direction LR
+    EX["① Extract 事实抽取<br/>rule 规则器(离线) 或 LLM(qwen3.8)<br/>只取 user 轮次"]
+    DE["② Decide 记忆决策<br/>ADD / UPDATE / DELETE / NONE<br/>余弦超阈值自动更新/删除"]
+    RET["③ Retrieve 混合检索<br/>0.7·向量cosine + 0.3·关键词<br/>作用域/元数据过滤，Top-k 注入上下文"]
+    CB["Core Blocks 核心记忆块<br/>persona / human / role<br/>label + value + value_limit（复刻 Letta）"]
+    SCO["Scope 三作用域隔离<br/>user_id / agent_id / run_id<br/>省略时默认 user=系统用户, agent=当前项目路径"]
+    EX --> DE --> RET
+  end
+
+  subgraph L4["能力层 · 可切换，零密钥也能离线跑"]
+    RX["Extractors<br/>RuleExtractor(零网络，中英自述句式)<br/>LLMExtractor(OpenAI 兼容, extra_body 关思维链)"]
+    EMB["Embedders<br/>LocalEmbedder(hash 384 维)<br/>OpenAIEmbedder(qwen3-embedding-8b, 1024 维)"]
+    VIX["VectorIndex<br/>float32 向量，cosine 相似度<br/>同批事实互建 relation 权重"]
+    EV["EventManager<br/>进程内 asyncio 事件总线<br/>memory.added/updated/deleted/cleared<br/>block.updated/deleted"]
+  end
+
+  GW["上游模型服务 · OpenAI 兼容网关(one-api/new-api)<br/>https://token.nau.edu.cn/v1<br/>chat: qwen3.8-27b · embeddings: qwen3-embedding-8b"]
+
+  subgraph DB["存储层 · SQLite 单文件 data/memvault.db（四表，写加锁）"]
+    direction LR
+    T1["memories<br/>记忆正文 / 类型 user·agent·procedural<br/>向量 / hash / 作用域 / 元数据 / 时间"]
+    T2["blocks<br/>核心块 (scope,label) 唯一<br/>value + value_limit + position"]
+    T3["history<br/>每条记忆 ADD/UPDATE/DELETE 全量变更轨迹"]
+    T4["relations<br/>记忆间关系与权重(同批 cosine)<br/>驱动关系图谱"]
+  end
+
+  CC --> MCP
+  HTTP --> API
+  DASH --> API
+  DASH -. WS 实时 .-> WS
+  MCP --> ENG
+  API --> ENG
+  WS -. 订阅 .-> EV
+
+  EX --> RX
+  RET --> EMB
+  RX -. 网络调用 .-> GW
+  EMB -. 网络调用 .-> GW
+  EMB --> VIX
+  RET --> VIX
+
+  ENG --> T1
+  ENG --> T2
+  ENG --> T3
+  ENG --> T4
+  ENG -- 变更发事件 --> EV
+  EV -. push .-> WS
+
+  classDef iface fill:#eef4fb,stroke:#9eacea,color:#1a1b1c;
+  classDef eng fill:#f1f5fa,stroke:#8fb4dc,color:#1a1b1c;
+  classDef cap fill:#fbfaf7,stroke:#eceae1,color:#1a1b1c;
+  classDef gw fill:#1f2a37,stroke:#1f2a37,color:#8fc4ff;
+  classDef dbt fill:#f1f5fa,stroke:#d6e2ef,color:#1f4e79;
+  class CC,HTTP,DASH,MCP,API,WS iface;
+  class EX,DE,RET,CB,SCO eng;
+  class RX,EMB,VIX,EV cap;
+  class GW gw;
+  class T1,T2,T3,T4 dbt;

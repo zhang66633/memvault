@@ -1,0 +1,28 @@
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+*.egg-info/
+
+# data / secrets
+data/
+*.db
+*.sqlite3
+# every env variant, but keep the template
+.env
+.env.*
+!.env.example
+
+# local junk
+*.log
+*.bak
+*.bak-*
+*.tmp
+
+# OS / editors
+.DS_Store
+Thumbs.db
+desktop.ini
+.idea/
+.vscode/

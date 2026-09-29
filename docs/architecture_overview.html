@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MemVault 全面图景</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Roboto', 'PingFang SC', 'Segoe UI', 'Microsoft YaHei', sans-serif;
+    background: #F4F3EE; color: #1A1B1C; line-height: 1.5;
+    padding: 20px; -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 1180px; margin: 0 auto; }
+  .hd { text-align: center; margin-bottom: 18px; }
+  .hd h1 { font-size: 24px; font-weight: 800; letter-spacing: .5px; }
+  .hd h1 span { color: #2F6FB0; }
+  .hd p { font-size: 13px; color: #6B7280; margin-top: 5px; }
+
+  .layer { background: #fff; border: 1px solid #E4E3DD; border-radius: 14px; padding: 14px 16px; }
+  .layer + .arrow { display: flex; justify-content: center; align-items: center; gap: 8px;
+    color: #2F6FB0; font-size: 12px; font-weight: 600; padding: 3px 0; }
+  .arrow .ln { width: 1.5px; height: 16px; background: #9EACEA; }
+  .ltag { display: inline-block; font-size: 11px; font-weight: 700; color: #2F6FB0;
+    background: rgba(47,111,176,.10); border-radius: 6px; padding: 2px 9px; margin-bottom: 10px; letter-spacing: .5px; }
+  .row { display: flex; gap: 12px; flex-wrap: wrap; }
+  .mod { flex: 1 1 0; min-width: 180px; background: #FBFAF7; border: 1px solid #ECEAE1;
+    border-radius: 10px; padding: 10px 12px; }
+  .mod h3 { font-size: 13.5px; font-weight: 700; display: flex; align-items: center; gap: 6px; }
+  .mod .dot { width: 8px; height: 8px; border-radius: 50%; background: #2F6FB0; flex: none; }
+  .mod p { font-size: 12px; color: #4B5563; margin-top: 5px; }
+  .mod code, .mono { font-family: ui-monopano, Consolas, monospace; font-size: 11.5px; color: #2F6FB0; }
+
+  /* engine pipeline */
+  .pipe { display: flex; align-items: stretch; gap: 0; flex-wrap: wrap; }
+  .stage { flex: 1 1 0; min-width: 150px; border-radius: 10px; padding: 10px 12px; border: 1px solid; }
+  .stage h3 { font-size: 13px; font-weight: 700; }
+  .stage p { font-size: 11.5px; color: #4B5563; margin-top: 4px; }
+  .s1 { background: rgba(158,172,234,.16); border-color: #9EACEA; }
+  .s2 { background: rgba(47,111,176,.10); border-color: #8FB4DC; }
+  .s3 { background: rgba(82,196,74,.10); border-color: #A9DCA8; }
+  .psep { display: flex; align-items: center; padding: 0 6px; color: #2F6FB0; font-weight: 800; font-size: 16px; }
+  .scope { margin-top: 10px; font-size: 12px; background: rgba(47,111,176,.07);
+    border: 1px dashed #9EACEA; border-radius: 9px; padding: 8px 11px; color: #334155; }
+  .scope b { color: #2F6FB0; }
+
+  .tables { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 4px; }
+  .tbl { flex: 1 1 0; min-width: 130px; background: #F1F5FA; border: 1px solid #D6E2EF;
+    border-radius: 9px; padding: 9px 11px; }
+  .tbl h3 { font-size: 12.5px; color: #1F4E79; }
+  .tbl p { font-size: 11px; color: #5A6B7E; margin-top: 3px; }
+
+  .flows { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 2px; }
+  .flow { flex: 1 1 320px; border-radius: 10px; padding: 10px 12px; font-size: 11.5px; line-height: 1.7; }
+  .flow.write { background: rgba(158,172,234,.14); border: 1px solid #9EACEA; }
+  .flow.read  { background: rgba(82,196,74,.12); border: 1px solid #A9DCA8; }
+  .flow b { font-size: 12.5px; }
+  .flow .step { color: #334155; }
+  .flow .arr { color: #2F6FB0; font-weight: 700; padding: 0 2px; }
+
+  .mid { display: flex; gap: 12px; align-items: stretch; flex-wrap: wrap; }
+  .mid .layer { flex: 1 1 0; min-width: 280px; }
+  .upstream { flex: 0 0 200px; background: #1F2A37; color: #E5E9EF; border-radius: 14px; padding: 14px 16px; }
+  .upstream .ltag { background: rgba(255,255,255,.12); color: #9EC5F0; }
+  .upstream h3 { font-size: 13px; }
+  .upstream p { font-size: 11.5px; color: #AAB4C2; margin-top: 6px; }
+  .upstream code { color: #8FC4FF; font-size: 11px; word-break: break-all; }
+  .foot { text-align: center; font-size: 11px; color: #9AA0A8; margin-top: 14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="hd">
+    <h1>Mem<span>Vault</span> 全面图景</h1>
+    <p>复刻 Mem0 三阶段记忆管线 + Letta 核心记忆块 · 一个共享库 · v0.3.0</p>
+  </div>
+
+  <!-- 接入层 -->
+  <div class="layer">
+    <span class="ltag">接入层 · 主流编程智能体 / 任意客户端</span>
+    <div class="row">
+      <div class="mod"><h3><span class="dot"></span>Claude Code · Cursor · Cline</h3>
+        <p>命令行 <code>mcp add</code> 接入，<b>MCP stdio</b>（JSON-RPC 2.0）；不同项目用 cwd 自动隔离</p></div>
+      <div class="mod"><h3><span class="dot"></span>Python · curl · 任意语言</h3>
+        <p>走 <b>HTTP REST</b>，<code>POST /api/v1/memories/</code> 等接口，跨语言跨进程可调用</p></div>
+      <div class="mod"><h3><span class="dot"></span>可视化控制台</h3>
+        <p>浏览器 <code>:8780/dashboard/</code>，记忆卡片 / 关系图 / 核心块 / 统计，<b>WebSocket 实时刷新</b></p></div>
+    </div>
+  </div>
+  <div class="arrow"><span class="ln"></span>MCP stdio　|　HTTP / WebSocket　|　同一套能力<span class="ln"></span></div>
+
+  <!-- 接口层 -->
+  <div class="layer">
+    <span class="ltag">接口层 · 两种协议共用同一个引擎</span>
+    <div class="row">
+      <div class="mod"><h3><span class="dot"></span>mcp_server.py</h3>
+        <p>MCP stdio 服务，13 个 tools：add / search / get / get_all / update / delete / delete_all / history / relations / stats / reset / whoami + 核心块</p></div>
+      <div class="mod"><h3><span class="dot"></span>api.py · FastAPI</h3>
+        <p>REST：<code>/memories</code> · <code>/search</code> · <code>/blocks</code> · <code>/history</code> · <code>/relations</code> · <code>/stats</code> · <code>/whoami</code> · <code>/health</code></p></div>
+      <div class="mod"><h3><span class="dot"></span>WebSocket /api/v1/ws</h3>
+        <p>进程内实时推送，支持 <code>?user_id=&amp;agent_id=&amp;run_id=</code> 作用域订阅过滤，断线自动重连</p></div>
+    </div>
+  </div>
+  <div class="arrow"><span class="ln"></span>统一调用 MemoryEngine<span class="ln"></span></div>
+
+  <!-- 引擎层 -->
+  <div class="layer">
+    <span class="ltag">核心引擎层 · MemoryEngine（唯一实例，写入读取都走它）</span>
+    <div class="pipe">
+      <div class="stage s1"><h3>① Extract 事实抽取</h3>
+        <p>从对话抽取长期事实；rule 规则器（离线）或 LLM（qwen3.8）；只取 user 轮次</p></div>
+      <div class="psep">→</div>
+      <div class="stage s2"><h3>② Decide 记忆决策</h3>
+        <p>逐条比对旧记忆：<b>ADD / UPDATE / DELETE / NONE</b>，余弦相似度超阈值自动更新/删除</p></div>
+      <div class="psep">→</div>
+      <div class="stage s3"><h3>③ Retrieve 混合检索</h3>
+        <p><code>0.7·向量cosine + 0.3·关键词</code>，叠加 metadata 过滤，Top-k 注入智能体上下文</p></div>
+    </div>
+    <div class="row" style="margin-top:10px">
+      <div class="mod"><h3><span class="dot"></span>Core Blocks 核心记忆块</h3>
+        <p>persona / human / role，<code>label + value + value_limit</code>；智能体上下文中始终可见，append / replace，复刻 Letta</p></div>
+      <div class="mod"><h3><span class="dot"></span>Scope 三作用域隔离</h3>
+        <p><b>user_id / agent_id / run_id</b> 三级逻辑隔离；省略时默认 user=系统用户、agent=当前项目路径（ScopeResolver）</p></div>
+    </div>
+  </div>
+  <div class="arrow"><span class="ln"></span>调用能力层 · 变更发事件<span class="ln"></span></div>
+
+  <!-- 能力层 + 上游 -->
+  <div class="mid">
+    <div class="layer">
+      <span class="ltag">能力层 · 可切换 / 零密钥也能离线跑</span>
+      <div class="row">
+        <div class="mod"><h3><span class="dot"></span>Extractors</h3>
+          <p>RuleExtractor（零网络，中英常见自述句式）／ LLMExtractor（OpenAI 兼容，extra_body 关思维链）</p></div>
+        <div class="mod"><h3><span class="dot"></span>Embedders</h3>
+          <p>LocalEmbedder（hash 384 维，确定性离线）／ OpenAIEmbedder（qwen3-embedding-8b，1024 维）</p></div>
+        <div class="mod"><h3><span class="dot"></span>VectorIndex</h3>
+          <p>float32 向量存取，cosine 相似度；同批事实互建 relation 关系权重</p></div>
+        <div class="mod"><h3><span class="dot"></span>EventManager</h3>
+          <p>进程内 asyncio 事件总线：memory.added / updated / deleted / cleared、block.updated / deleted</p></div>
+      </div>
+    </div>
+    <div class="upstream">
+      <span class="ltag">上游模型服务</span>
+      <h3>OpenAI 兼容网关</h3>
+      <p>学校算力网关（one-api / new-api 类）</p>
+      <p><code>https://token.nau.edu.cn/v1</code></p>
+      <p>chat/completions：<code>qwen3.8-27b</code><br>embeddings：<code>qwen3-embedding-8b</code></p>
+      <p style="margin-top:8px;color:#8FC4FF">由能力层经网络调用，与存储无关</p>
+    </div>
+  </div>
+  <div class="arrow"><span class="ln"></span>持久化到 SQLite<span class="ln"></span></div>
+
+  <!-- 存储层 -->
+  <div class="layer">
+    <span class="ltag">存储层 · SQLite 单文件（data/memvault.db，四张表，写加锁）</span>
+    <div class="tables">
+      <div class="tbl"><h3>memories</h3><p>记忆正文 / 类型 user·agent·procedural / 向量 / hash / 作用域 / 元数据 / 时间戳</p></div>
+      <div class="tbl"><h3>blocks</h3><p>核心记忆块，(scope, label) 唯一，value + value_limit + position</p></div>
+      <div class="tbl"><h3>history</h3><p>每条记忆的 ADD / UPDATE / DELETE 全量变更轨迹</p></div>
+      <div class="tbl"><h3>relations</h3><p>记忆间关系与权重（同批事实 cosine），驱动关系图谱</p></div>
+    </div>
+  </div>
+
+  <!-- 数据流 -->
+  <div class="arrow"><span class="ln"></span>两条端到端数据流<span class="ln"></span></div>
+  <div class="flows">
+    <div class="flow write"><b>写入流</b><br>
+      <span class="step">对话消息</span><span class="arr">→</span>add<span class="arr">→</span>Extract 抽事实<span class="arr">→</span>Embed 1024 维<span class="arr">→</span>Decide 决策<span class="arr">→</span>写 memories + history<span class="arr">→</span>EventManager<span class="arr">→</span>WebSocket<span class="arr">→</span>控制台实时刷新</div>
+    <div class="flow read"><b>读取流</b><br>
+      <span class="step">用户问题</span><span class="arr">→</span>search<span class="arr">→</span>Embed 向量化<span class="arr">→</span>VectorIndex cosine ⊕ 关键词<span class="arr">→</span>作用域/元数据过滤<span class="arr">→</span>Top-k 相关记忆<span class="arr">→</span>注入智能体上下文 + 常驻核心块</div>
+  </div>
+
+  <div class="foot">横切配置：项目根 .env（零依赖 envfile 加载，不覆盖已有环境变量）· 104 项 pytest 全绿 · MCP 为独立 stdio 进程，不共享 HTTP 进程内事件总线</div>
+</div>
+</body>
+</html>

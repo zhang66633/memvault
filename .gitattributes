@@ -1,0 +1,16 @@
+# Line endings: LF in the repository, everywhere.
+#
+# This project lives on Windows and is documented as deployable to a Linux host
+# (see docs/DEVLOG.md SOP section), and the Python sources carry no CRLF
+# requirement. `.bat`/`.cmd` are the exception: cmd.exe parses LF-only batch
+# files badly in places (notably `goto`/labels), so those keep CRLF.
+* text=auto eol=lf
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# Binary-ish files git should never touch
+*.db binary
+*.sqlite3 binary
+*.png binary
+*.jpg binary
+*.ico binary

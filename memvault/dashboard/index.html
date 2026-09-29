@@ -1,0 +1,673 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MemVault · AI 记忆控制台</title>
+<style>
+  :root {
+    --bg: #0b1220;
+    --bg-2: #101a2e;
+    --panel: #13203a;
+    --panel-2: #18294a;
+    --border: #24375c;
+    --text: #e6edf7;
+    --muted: #8aa0c0;
+    --accent: #18c2a7;
+    --accent-2: #3b9eff;
+    --warn: #ff8a5b;
+    --danger: #ff5d6c;
+    --user: #18c2a7;
+    --agent: #3b9eff;
+    --procedural: #f2b94c;
+    --radius: 12px;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    background: radial-gradient(1200px 600px at 80% -10%, #15304f 0%, var(--bg) 55%);
+    color: var(--text);
+    font: 14px/1.55 -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+  }
+  header {
+    padding: 18px 26px 14px;
+    display: flex; align-items: center; gap: 18px;
+    border-bottom: 1px solid var(--border);
+    background: rgba(11,18,32,.72);
+    backdrop-filter: blur(8px);
+    position: sticky; top: 0; z-index: 10;
+  }
+  .logo { font-size: 20px; font-weight: 800; letter-spacing: .5px; }
+  .logo span { color: var(--accent); }
+  .logo small { color: var(--muted); font-weight: 500; margin-left: 8px; font-size: 12px; }
+  .stats-chips { display: flex; gap: 10px; flex-wrap: wrap; margin-left: auto; }
+  .chip {
+    background: var(--panel); border: 1px solid var(--border); border-radius: 999px;
+    padding: 5px 14px; font-size: 12.5px; color: var(--muted);
+  }
+  .chip b { color: var(--text); font-size: 14px; margin-left: 4px; }
+  .scope-bar {
+    display: flex; gap: 10px; align-items: center; padding: 14px 26px;
+    border-bottom: 1px solid var(--border); flex-wrap: wrap;
+  }
+  .seg { display: flex; background: var(--panel); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+  .seg button {
+    background: none; border: 0; color: var(--muted); padding: 8px 16px; cursor: pointer; font-size: 13px;
+  }
+  .seg button.on { background: var(--accent); color: #06281f; font-weight: 700; }
+  input, select, textarea {
+    background: var(--bg-2); border: 1px solid var(--border); color: var(--text);
+    border-radius: 9px; padding: 9px 12px; font: inherit; outline: none;
+  }
+  input:focus, select:focus, textarea:focus { border-color: var(--accent-2); }
+  .scope-bar input { width: 220px; }
+  #ws-state { margin-left: auto; font-size: 12.5px; color: var(--muted); display: flex; align-items: center; gap: 6px; }
+  .ws-dot { width: 8px; height: 8px; border-radius: 50%; background: #9aa4b2; flex: none; }
+  #ws-state.ws-on .ws-dot { background: #34d399; box-shadow: 0 0 6px rgba(52,211,153,.8); }
+  #ws-state.ws-off .ws-dot { background: var(--danger); }
+  button.btn {
+    border: 1px solid var(--accent); background: rgba(24,194,167,.14);
+    color: var(--accent); border-radius: 9px; padding: 8px 16px; cursor: pointer; font-weight: 600;
+  }
+  button.btn:hover { background: rgba(24,194,167,.26); }
+  button.ghost { border-color: var(--border); color: var(--muted); background: none; }
+  button.ghost:hover { color: var(--text); border-color: var(--muted); }
+  button.danger { border-color: var(--danger); color: var(--danger); background: rgba(255,93,108,.1); }
+  .hint { color: var(--warn); font-size: 12.5px; }
+  nav.tabs { display: flex; gap: 4px; padding: 0 26px; border-bottom: 1px solid var(--border); }
+  nav.tabs button {
+    background: none; border: 0; color: var(--muted); padding: 13px 18px; cursor: pointer;
+    border-bottom: 2px solid transparent; font-size: 14px;
+  }
+  nav.tabs button.on { color: var(--text); border-bottom-color: var(--accent); font-weight: 700; }
+  main { padding: 22px 26px 60px; max-width: 1280px; margin: 0 auto; }
+  .grid { display: grid; gap: 16px; }
+  .card {
+    background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 16px 18px;
+  }
+  .card h3 { margin: 0 0 12px; font-size: 15px; }
+  .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .mem-list { display: grid; gap: 12px; }
+  .mem {
+    background: var(--panel); border: 1px solid var(--border); border-left: 3px solid var(--accent);
+    border-radius: 10px; padding: 13px 16px;
+  }
+  .mem.user { border-left-color: var(--user); }
+  .mem.agent { border-left-color: var(--agent); }
+  .mem.procedural { border-left-color: var(--procedural); }
+  .mem .text { font-size: 14.5px; }
+  .mem .meta { display: flex; gap: 8px; align-items: center; margin-top: 9px; flex-wrap: wrap; }
+  .tag {
+    font-size: 11.5px; padding: 2px 9px; border-radius: 999px;
+    background: var(--panel-2); color: var(--muted); border: 1px solid var(--border);
+  }
+  .tag.type-user { color: var(--user); border-color: var(--user); }
+  .tag.type-agent { color: var(--agent); border-color: var(--agent); }
+  .tag.type-procedural { color: var(--procedural); border-color: var(--procedural); }
+  .time { color: var(--muted); font-size: 11.5px; margin-left: auto; }
+  .mem .actions { display: flex; gap: 6px; margin-top: 10px; }
+  .mem .actions button { font-size: 12px; padding: 4px 11px; }
+  .score-bar { height: 6px; background: var(--bg-2); border-radius: 4px; margin-top: 10px; overflow: hidden; }
+  .score-bar i { display: block; height: 100%; background: linear-gradient(90deg, var(--accent), var(--accent-2)); }
+  textarea { width: 100%; min-height: 90px; resize: vertical; }
+  label.field { display: grid; gap: 6px; font-size: 12.5px; color: var(--muted); }
+  .two { grid-template-columns: 1fr 1fr; display: grid; gap: 12px; }
+  .history { border-left: 2px solid var(--border); margin-left: 6px; padding-left: 12px; display: grid; gap: 8px; }
+  .history .ev { font-size: 12.5px; color: var(--muted); }
+  .history .ev b { color: var(--text); }
+  .act-ADD { color: var(--accent); } .act-UPDATE { color: var(--accent-2); } .act-DELETE { color: var(--danger); }
+  .empty { color: var(--muted); text-align: center; padding: 46px 0; font-size: 13.5px; }
+  #graph { width: 100%; height: 560px; background: var(--bg-2); border-radius: 10px; border: 1px solid var(--border); cursor: grab; }
+  #graph:active { cursor: grabbing; }
+  .bar-chart { display: grid; gap: 10px; }
+  .bar-row { display: grid; grid-template-columns: 120px 1fr 46px; gap: 10px; align-items: center; font-size: 12.5px; }
+  .bar-row .track { height: 14px; background: var(--bg-2); border-radius: 7px; overflow: hidden; }
+  .bar-row i { display: block; height: 100%; background: linear-gradient(90deg, var(--accent-2), var(--accent)); border-radius: 7px; }
+  .bar-row b { text-align: right; color: var(--muted); font-weight: 600; }
+  .block-list { display: grid; gap: 10px; }
+  .block { background: var(--panel-2); border: 1px solid var(--border); border-radius: 10px; padding: 11px 14px; }
+  .block .lbl { font-weight: 700; color: var(--accent); }
+  .block .val { margin: 6px 0; white-space: pre-wrap; }
+  .toast {
+    position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%);
+    background: var(--panel-2); border: 1px solid var(--border); padding: 10px 20px;
+    border-radius: 10px; opacity: 0; transition: opacity .2s; pointer-events: none; z-index: 50;
+  }
+  .toast.show { opacity: 1; }
+  .toast.err { border-color: var(--danger); color: var(--danger); }
+  .hidden { display: none !important; }
+  code.k { color: var(--accent); }
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">Mem<span>Vault</span><small>AI 记忆系统 · 三阶段记忆管线 + MCP</small></div>
+  <div class="stats-chips" id="chips">
+    <div class="chip">记忆<b id="s-total">-</b></div>
+    <div class="chip">用户<b id="s-users">-</b></div>
+    <div class="chip">智能体<b id="s-agents">-</b></div>
+    <div class="chip">会话<b id="s-runs">-</b></div>
+    <div class="chip">核心块<b id="s-blocks">-</b></div>
+  </div>
+</header>
+
+<div class="scope-bar">
+  <div class="seg" id="scope-seg">
+    <button data-k="user_id" class="on">按用户</button>
+    <button data-k="agent_id">按智能体</button>
+    <button data-k="run_id">按会话</button>
+  </div>
+  <input id="scope-id" placeholder="输入作用域 ID（留空则用默认：当前用户 / 当前项目）" />
+  <button class="btn" id="apply-scope">应用作用域</button>
+  <span class="hint" id="scope-hint">正在读取默认作用域…</span>
+  <span id="ws-state"><i class="ws-dot"></i>实时连接中…</span>
+</div>
+
+<nav class="tabs" id="tabs">
+  <button data-t="memories" class="on">记忆</button>
+  <button data-t="graph">关系图谱</button>
+  <button data-t="blocks">核心记忆块</button>
+  <button data-t="stats">统计</button>
+</nav>
+
+<main>
+  <!-- 记忆 -->
+  <section id="tab-memories">
+    <div class="row" style="margin-bottom:14px">
+      <input id="search-q" placeholder="语义+关键词检索，例如：喜欢吃什么 / 住在哪里" style="flex:1;min-width:240px" />
+      <button class="btn" id="btn-search">检索</button>
+      <button class="ghost btn" id="btn-all">全部记忆</button>
+      <button class="ghost btn" id="btn-add-toggle">＋ 新增对话记忆</button>
+      <button class="danger btn" id="btn-clear">清空作用域</button>
+    </div>
+
+    <div class="card hidden" id="add-panel" style="margin-bottom:16px">
+      <h3>新增对话记忆</h3>
+      <div class="grid" style="gap:12px">
+        <label class="field">对话（每行一轮，格式 <code class="k">user: 内容</code> 或 <code class="k">assistant: 内容</code>）
+          <textarea id="add-msgs" placeholder="user: 我叫张三，喜欢吃辣的食物。&#10;assistant: 好的，我记住了。"></textarea>
+        </label>
+        <div class="two">
+          <label class="field">记忆类型
+            <select id="add-type"><option value="user">user 用户事实</option><option value="agent">agent 智能体事实</option><option value="procedural">procedural 流程记忆</option></select>
+          </label>
+          <label class="field">metadata（JSON，可空）
+            <input id="add-meta" placeholder='{"category":"profile"}' />
+          </label>
+        </div>
+        <div class="row">
+          <label class="row" style="gap:6px;font-size:13px;color:var(--muted)"><input type="checkbox" id="add-infer" checked style="padding:0"> 抽取事实（关闭则原样写入每条消息）</label>
+          <button class="btn" id="btn-add" style="margin-left:auto">写入记忆</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="mem-list" id="mem-list"></div>
+  </section>
+
+  <!-- 关系图谱 -->
+  <section id="tab-graph" class="hidden">
+    <div class="row" style="margin-bottom:12px">
+      <p class="hint" style="margin:0">力导向图谱：节点为记忆，边为矛盾替换/事实关系。拖拽节点可重新布局，点击节点查看内容，滚轮缩放。</p>
+      <button class="ghost btn" id="btn-graph-reload" style="margin-left:auto">重新布局</button>
+    </div>
+    <svg id="graph"></svg>
+  </section>
+
+  <!-- 核心记忆块 -->
+  <section id="tab-blocks" class="hidden">
+    <div class="two">
+      <div class="card">
+        <h3>用户核心块 <code class="k">scope_type=user</code></h3>
+        <div class="row" style="margin-bottom:10px">
+          <input id="blk-user-scope" placeholder="用户 ID" style="flex:1" />
+          <button class="ghost btn" data-load="user">载入</button>
+        </div>
+        <div class="block-list" id="blocks-user"></div>
+        <div class="grid" style="gap:8px;margin-top:12px">
+          <div class="two">
+            <input id="blk-user-label" placeholder="label，如 persona" />
+            <input id="blk-user-limit" type="number" placeholder="value_limit" value="2000" />
+          </div>
+          <textarea id="blk-user-value" placeholder="块内容（智能体上下文中始终可见）" style="min-height:60px"></textarea>
+          <button class="btn" id="blk-user-save">新增 / 覆盖块</button>
+        </div>
+      </div>
+      <div class="card">
+        <h3>智能体核心块 <code class="k">scope_type=agent</code></h3>
+        <div class="row" style="margin-bottom:10px">
+          <input id="blk-agent-scope" placeholder="智能体 ID" style="flex:1" />
+          <button class="ghost btn" data-load="agent">载入</button>
+        </div>
+        <div class="block-list" id="blocks-agent"></div>
+        <div class="grid" style="gap:8px;margin-top:12px">
+          <div class="two">
+            <input id="blk-agent-label" placeholder="label，如 role" />
+            <input id="blk-agent-limit" type="number" placeholder="value_limit" value="2000" />
+          </div>
+          <textarea id="blk-agent-value" placeholder="块内容" style="min-height:60px"></textarea>
+          <button class="btn" id="blk-agent-save">新增 / 覆盖块</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 统计 -->
+  <section id="tab-stats" class="hidden">
+    <div class="two">
+      <div class="card"><h3>按记忆类型</h3><div class="bar-chart" id="chart-type"></div></div>
+      <div class="card"><h3>按用户（Top 10）</h3><div class="bar-chart" id="chart-users"></div></div>
+      <div class="card"><h3>按智能体（Top 10）</h3><div class="bar-chart" id="chart-agents"></div></div>
+      <div class="card"><h3>按会话（Top 10）</h3><div class="bar-chart" id="chart-runs"></div></div>
+    </div>
+  </section>
+</main>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const $ = s => document.querySelector(s);
+const api = (p, opt) => fetch('/api/v1' + p, opt).then(async r => {
+  if (!r.ok) throw new Error((await r.json().catch(() => ({}))).detail || r.statusText);
+  return r.status === 204 ? null : r.json();
+});
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const fmt = iso => new Date(iso).toLocaleString('zh-CN', {hour12:false});
+let scope = { k: 'user_id', v: '' };
+let whoami = null;
+
+function toast(msg, isErr) {
+  const t = $('#toast'); t.textContent = msg; t.className = 'toast show' + (isErr ? ' err' : '');
+  clearTimeout(t._t); t._t = setTimeout(() => t.className = 'toast', 2600);
+}
+function renderScopeHint() {
+  if (scope.v) { $('#scope-hint').textContent = `显式作用域：${scope.k} = ${scope.v}`; return; }
+  if (!whoami) { $('#scope-hint').textContent = '默认作用域读取中…'; return; }
+  const run = whoami.run_id ? ` / 会话 ${whoami.run_id}` : ' / 会话不隔离';
+  $('#scope-hint').textContent =
+    `默认作用域：用户 ${whoami.user_id ?? '—'} / 智能体 ${whoami.agent_id ?? '—'}${run}（留空即使用）`;
+}
+function scopeParam() {
+  return scope.v ? new URLSearchParams({ [scope.k]: scope.v }).toString() : '';
+}
+
+// ---------- header stats ----------
+async function loadStats() {
+  const s = await api('/stats');
+  $('#s-total').textContent = s.total_memories;
+  $('#s-users').textContent = s.users.length;
+  $('#s-agents').textContent = s.agents.length;
+  $('#s-runs').textContent = s.runs.length;
+  $('#s-blocks').textContent = s.total_blocks;
+  return s;
+}
+
+// ---------- memories ----------
+function memCard(m, searching) {
+  const meta = Object.entries(m.metadata || {}).map(([k,v]) => `<span class="tag">${esc(k)}: ${esc(v)}</span>`).join('');
+  const score = searching && m.score != null
+    ? `<div class="score-bar"><i style="width:${Math.min(100, Math.round(m.score*100))}%"></i></div>` : '';
+  return `<div class="mem ${m.memory_type}">
+    <div class="text">${esc(m.memory)}</div>
+    ${score}
+    <div class="meta">
+      <span class="tag type-${m.memory_type}">${m.memory_type}</span>${meta}
+      <span class="time">${fmt(m.created_at)}${m.updated_at !== m.created_at ? ' · 更新于 ' + fmt(m.updated_at) : ''}</span>
+    </div>
+    <div class="actions">
+      <button class="ghost btn" data-act="edit" data-id="${m.id}">编辑</button>
+      <button class="ghost btn" data-act="hist" data-id="${m.id}">历史</button>
+      <button class="danger btn" data-act="del" data-id="${m.id}">删除</button>
+    </div>
+  </div>`;
+}
+
+async function listMemories(searching) {
+  const r = await api('/memories/?' + scopeParam() + '&limit=200');
+  $('#mem-list').innerHTML = r.results.length
+    ? r.results.map(m => memCard(m, searching)).join('')
+    : '<div class="empty">该作用域还没有记忆，试试“新增对话记忆”</div>';
+}
+
+async function searchMemories() {
+  const q = $('#search-q').value.trim();
+  if (!q) return;
+  const r = await api('/memories/search', {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ query: q, [scope.k]: scope.v, limit: 30 })
+  });
+  $('#mem-list').innerHTML = r.results.length
+    ? r.results.map(m => memCard(m, true)).join('')
+    : '<div class="empty">没有检索到相关记忆</div>';
+}
+
+async function renderHistory(id) {
+  const hist = await api(`/memories/${id}/history`);
+  const lines = hist.map(h => `<div class="ev"><b>${esc(h.old_memory ?? '—')}</b>
+      <span class="act-${h.action}"> ${h.action} →</span> <b>${esc(h.new_memory ?? '（删除）')}</b><div>${fmt(h.changed_at)}</div></div>`).join('');
+  const cur = await api(`/memories/${id}`);
+  $('#mem-list').innerHTML = `<div class="card"><h3>变更历史</h3>
+    <div class="text" style="margin-bottom:12px">${esc(cur.memory)}</div>
+    <div class="history">${lines || '<div class="hint">无历史</div>'}</div>
+    <div class="row" style="margin-top:14px"><button class="ghost btn" id="hist-back">← 返回列表</button></div></div>`;
+}
+
+function editCard(id, text, metadata) {
+  $('#mem-list').innerHTML = `<div class="card"><h3>编辑记忆</h3>
+    <div class="grid" style="gap:12px">
+      <textarea id="edit-text">${esc(text)}</textarea>
+      <label class="field">metadata（JSON）<input id="edit-meta" value="${esc(JSON.stringify(metadata))}"/></label>
+      <div class="row"><button class="btn" id="edit-save">保存</button><button class="ghost btn" id="hist-back">取消</button></div>
+    </div></div>`;
+  $('#edit-save').onclick = async () => {
+    let meta = {};
+    try { meta = JSON.parse($('#edit-meta').value || '{}'); }
+    catch { toast('metadata 不是合法 JSON', true); return; }
+    await api(`/memories/${id}`, {method:'PUT', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ text: $('#edit-text').value, metadata: meta })});
+    toast('已保存'); listMemories();
+  };
+}
+
+$('#mem-list').addEventListener('click', async e => {
+  const b = e.target.closest('button[data-act]');
+  if (!b) return;
+  const id = b.dataset.id;
+  try {
+    if (b.dataset.act === 'del') {
+      await api(`/memories/${id}`, {method:'DELETE'}); toast('已删除'); listMemories(); loadStats();
+    } else if (b.dataset.act === 'hist') {
+      renderHistory(id);
+    } else if (b.dataset.act === 'edit') {
+      const m = await api(`/memories/${id}`); editCard(id, m.memory, m.metadata);
+    }
+  } catch (err) { toast(err.message, true); }
+});
+document.addEventListener('click', e => { if (e.target.id === 'hist-back') listMemories(); });
+
+$('#btn-search').onclick = () => searchMemories().catch(e => toast(e.message, true));
+$('#search-q').addEventListener('keydown', e => { if (e.key === 'Enter') $('#btn-search').click(); });
+$('#btn-all').onclick = () => needScope() && listMemories().catch(e => toast(e.message, true));
+$('#btn-add-toggle').onclick = () => $('#add-panel').classList.toggle('hidden');
+$('#btn-add').onclick = async () => {
+  if (!needScope()) return;
+  const msgs = $('#add-msgs').value.split('\n').map(l => {
+    const m = l.match(/^\s*(user|assistant|system)\s*[:：]\s*(.*)$/);
+    return m ? { role: m[1], content: m[2] } : null;
+  }).filter(Boolean);
+  if (!msgs.length) { toast('每行需形如 user: 内容', true); return; }
+  let meta = {};
+  try { meta = JSON.parse($('#add-meta').value || '{}'); }
+  catch { toast('metadata 不是合法 JSON', true); return; }
+  try {
+    const r = await api('/memories/', {method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ messages: msgs, metadata: meta, infer: $('#add-infer').checked,
+        memory_type: $('#add-type').value, [scope.k]: scope.v })});
+    toast(`写入 ${r.results.length} 条记忆`);
+    $('#add-msgs').value = ''; $('#add-meta').value = '';
+    listMemories(); loadStats();
+  } catch (err) { toast(err.message, true); }
+};
+$('#btn-clear').onclick = async () => {
+  if (!confirm(scope.v ? '确定清空该作用域全部记忆？此操作不可恢复。' : '确定清空当前默认作用域全部记忆？此操作不可恢复。')) return;
+  await api('/memories/?' + scopeParam(), {method:'DELETE'});
+  toast('已清空'); listMemories(); loadStats();
+};
+
+// ---------- scope ----------
+$('#scope-seg').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  document.querySelectorAll('#scope-seg button').forEach(x => x.classList.toggle('on', x === b));
+  scope.k = b.dataset.k;
+  $('#scope-id').placeholder = `输入${b.textContent}ID`;
+});
+$('#apply-scope').onclick = () => {
+  scope.v = $('#scope-id').value.trim();
+  renderScopeHint();
+  listMemories();
+};
+async function loadWhoami() {
+  whoami = await api('/whoami');
+  renderScopeHint();
+}
+$('#scope-id').addEventListener('keydown', e => { if (e.key === 'Enter') $('#apply-scope').click(); });
+
+// ---------- tabs ----------
+$('#tabs').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  document.querySelectorAll('#tabs button').forEach(x => x.classList.toggle('on', x === b));
+  ['memories','graph','blocks','stats'].forEach(t => $('#tab-'+t).classList.toggle('hidden', t !== b.dataset.t));
+  if (b.dataset.t === 'graph') loadGraph();
+  if (b.dataset.t === 'stats') loadCharts();
+});
+
+// ---------- force graph ----------
+let sim = null;
+const SVG_NS = 'http://www.w3.org/2000/svg';
+async function loadGraph() {
+  const svg = $('#graph'); svg.innerHTML = '';
+  const [mems, rels] = await Promise.all([
+    api('/memories/?' + scopeParam() + '&limit=200'),
+    api('/relations')
+  ]);
+  const ids = new Set(mems.results.map(m => m.id));
+  const edges = rels.filter(r => ids.has(r.source) && ids.has(r.target));
+  if (!mems.results.length) { svg.innerHTML = '<text x="50%" y="50%" fill="#8aa0c0" text-anchor="middle">设置作用域并存在记忆后显示图谱</text>'; return; }
+  const W = svg.clientWidth || 1000, H = 560;
+  const N = mems.results.length;
+  const R = Math.min(W, H) * 0.28;
+  const nodes = mems.results.map((m, i) => ({
+    ...m,
+    x: W/2 + R * Math.cos(i / N * 2 * Math.PI - Math.PI / 2),
+    y: H/2 + R * Math.sin(i / N * 2 * Math.PI - Math.PI / 2),
+    vx: 0, vy: 0,
+  }));
+  const byId = Object.fromEntries(nodes.map(n => [n.id, n]));
+  const linkSet = edges.filter(e => byId[e.source] && byId[e.target]);
+
+  const gLinks = document.createElementNS(SVG_NS,'g');
+  const gNodes = document.createElementNS(SVG_NS,'g');
+  svg.append(gLinks, gNodes);
+  const linkEls = linkSet.map(e => {
+    const l = document.createElementNS(SVG_NS,'line');
+    l.setAttribute('stroke', '#3b9eff');
+    l.setAttribute('stroke-width', 1 + e.weight * 2.5);
+    l.setAttribute('stroke-opacity', 0.35 + e.weight);
+    gLinks.append(l); return l;
+  });
+  const nodeEls = nodes.map(n => {
+    const g = document.createElementNS(SVG_NS,'g'); g.style.cursor = 'pointer';
+    const c = document.createElementNS(SVG_NS,'circle');
+    c.setAttribute('r', 9);
+    c.setAttribute('fill', n.memory_type === 'agent' ? '#3b9eff' : n.memory_type === 'procedural' ? '#f2b94c' : '#18c2a7');
+    c.setAttribute('stroke', '#0b1220'); c.setAttribute('stroke-width', 2);
+    const t = document.createElementNS(SVG_NS,'text');
+    t.setAttribute('fill', '#e6edf7'); t.setAttribute('font-size', 11); t.setAttribute('x', 13); t.setAttribute('y', 4);
+    t.textContent = n.memory.length > 18 ? n.memory.slice(0, 18) + '…' : n.memory;
+    g.append(c, t); gNodes.append(g);
+    let drag = false;
+    g.addEventListener('mousedown', () => drag = true);
+    window.addEventListener('mouseup', () => drag = false);
+    g.addEventListener('mousemove', ev => {
+      if (!drag) return;
+      const rect = svg.getBoundingClientRect();
+      n.x = ev.clientX - rect.left; n.y = ev.clientY - rect.top; n.fixed = true;
+    });
+    g.addEventListener('click', () => toast(n.memory));
+    n._el = g; n._c = c;
+    return g;
+  });
+
+  function tick() {
+    for (const a of nodes) {
+      for (const b of nodes) {
+        if (a === b) continue;
+        let dx = a.x - b.x, dy = a.y - b.y; let d2 = dx*dx + dy*dy || 1;
+        const f = 1600 / d2;
+        a.vx += dx / Math.sqrt(d2) * f * 0.02; a.vy += dy / Math.sqrt(d2) * f * 0.02;
+      }
+    }
+    for (const e of linkSet) {
+      const a = byId[e.source], b = byId[e.target];
+      let dx = b.x - a.x, dy = b.y - a.y; const d = Math.hypot(dx,dy) || 1;
+      const f = (d - 150) * 0.006;
+      a.vx += dx/d*f; a.vy += dy/d*f; b.vx -= dx/d*f; b.vy -= dy/d*f;
+    }
+    for (const n of nodes) {
+      n.vx += (W/2 - n.x) * 0.012; n.vy += (H/2 - n.y) * 0.012;
+      if (!n.fixed) { n.x += n.vx; n.y += n.vy; }
+      n.vx *= 0.82; n.vy *= 0.82;
+      n.x = Math.max(20, Math.min(W-20, n.x)); n.y = Math.max(20, Math.min(H-20, n.y));
+      n._el.setAttribute('transform', `translate(${n.x},${n.y})`);
+    }
+    linkSet.forEach((e, i) => {
+      const a = byId[e.source], b = byId[e.target];
+      linkEls[i].setAttribute('x1', a.x); linkEls[i].setAttribute('y1', a.y);
+      linkEls[i].setAttribute('x2', b.x); linkEls[i].setAttribute('y2', b.y);
+    });
+    sim = requestAnimationFrame(tick);
+  }
+  cancelAnimationFrame(sim); tick();
+}
+$('#btn-graph-reload').onclick = loadGraph;
+
+// ---------- core blocks ----------
+async function loadBlocks(type) {
+  const scopeId = $('#blk-' + type + '-scope').value.trim();
+  if (!scopeId) return;
+  const blocks = await api(`/blocks?scope_type=${type}&scope_id=${encodeURIComponent(scopeId)}`);
+  $('#blocks-' + type).innerHTML = blocks.length ? blocks.map(b => `
+    <div class="block">
+      <div class="lbl">${esc(b.label)} <span class="tag">limit ${b.value_limit} · #${b.position}</span></div>
+      <div class="val">${esc(b.value) || '<span class="hint">（空）</span>'}</div>
+      <div class="row">
+        <button class="ghost btn" data-blk-edit='${JSON.stringify({type, id:scopeId, label:b.label, value:b.value, limit:b.value_limit}).replace(/'/g,'&#39;')}'>填入编辑</button>
+        <button class="danger btn" data-blk-del="${type}|${scopeId}|${b.label}">删除</button>
+      </div>
+    </div>`).join('') : '<div class="empty">无核心块</div>';
+}
+document.querySelectorAll('[data-load]').forEach(b => b.onclick = () => loadBlocks(b.dataset.load));
+['user','agent'].forEach(type => {
+  $('#blk-' + type + '-save').onclick = async () => {
+    const scopeId = $('#blk-' + type + '-scope').value.trim();
+    const label = $('#blk-' + type + '-label').value.trim();
+    if (!scopeId || !label) { toast('需要作用域 ID 和 label', true); return; }
+    const limit = parseInt($('#blk-' + type + '-limit').value, 10) || 2000;
+    await api(`/blocks?scope_type=${type}&scope_id=${encodeURIComponent(scopeId)}`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ label, value: $('#blk-' + type + '-value').value, value_limit: limit })
+    });
+    toast('核心块已保存'); loadBlocks(type); loadStats();
+  };
+});
+document.querySelectorAll('#blocks-user, #blocks-agent').forEach(box => box.addEventListener('click', async e => {
+  const edit = e.target.closest('[data-blk-edit]');
+  const del = e.target.closest('[data-blk-del]');
+  if (edit) {
+    const d = JSON.parse(edit.dataset.blkEdit);
+    $('#blk-' + d.type + '-label').value = d.label;
+    $('#blk-' + d.type + '-value').value = d.value;
+    $('#blk-' + d.type + '-limit').value = d.limit;
+    toast('已填入编辑框，修改后保存即覆盖');
+  }
+  if (del) {
+    const [type, sid, label] = del.dataset.blkDel.split('|');
+    await api(`/blocks/${type}/${encodeURIComponent(sid)}/${encodeURIComponent(label)}`, {method:'DELETE'});
+    toast('已删除'); loadBlocks(type); loadStats();
+  }
+}));
+
+// ---------- charts ----------
+function barChart(el, rows, color) {
+  const max = Math.max(1, ...rows.map(r => r[1]));
+  el.innerHTML = rows.length ? rows.map(([k,v]) => `
+    <div class="bar-row"><span title="${esc(k)}">${esc(String(k).slice(0,12))}</span>
+    <div class="track"><i style="width:${v/max*100}%;${color ? 'background:'+color:''}"></i></div><b>${v}</b></div>`).join('')
+    : '<div class="empty">暂无数据</div>';
+}
+async function loadCharts() {
+  const s = await loadStats();
+  barChart($('#chart-type'), Object.entries(s.by_type));
+  barChart($('#chart-users'), s.users.slice(0,10).map(u => [u, 0]), '#18c2a7');
+  // user counts come from get_all per user is heavy; stats endpoint carries ids only —
+  // enrich top users by listing each:
+  const uc = await Promise.all(s.users.slice(0,10).map(async u =>
+    [u, (await api('/memories/?user_id=' + encodeURIComponent(u) + '&limit=1000')).results.length]));
+  barChart($('#chart-users'), uc.sort((a,b)=>b[1]-a[1]), '#18c2a7');
+  const ac = await Promise.all(s.agents.slice(0,10).map(async u =>
+    [u, (await api('/memories/?agent_id=' + encodeURIComponent(u) + '&limit=1000')).results.length]));
+  barChart($('#chart-agents'), ac.sort((a,b)=>b[1]-a[1]), '#3b9eff');
+  const rc = await Promise.all(s.runs.slice(0,10).map(async u =>
+    [u, (await api('/memories/?run_id=' + encodeURIComponent(u) + '&limit=1000')).results.length]));
+  barChart($('#chart-runs'), rc.sort((a,b)=>b[1]-a[1]), '#f2b94c');
+}
+
+// ---------- WebSocket realtime ----------
+let ws = null;
+function wsState(text, on) {
+  const el = $('#ws-state');
+  el.textContent = text;
+  el.classList.toggle('ws-on', !!on);
+  el.classList.toggle('ws-off', on === false);
+  el.innerHTML = `<i class="ws-dot"></i>${text}`;
+}
+function currentTab() {
+  return document.querySelector('#tabs button.on')?.dataset.t;
+}
+// Does this event belong to the page's current scope (or no scope info)?
+function inPageScope(evScope) {
+  if (!evScope) return true;
+  let cur;
+  if (scope.v) cur = { [scope.k]: scope.v };
+  else if (whoami) cur = { user_id: whoami.user_id, agent_id: whoami.agent_id, run_id: whoami.run_id };
+  if (!cur) return true;
+  return Object.entries(cur).every(([k, v]) => v == null || evScope[k] === v);
+}
+function handleRealtimeEvent(evt) {
+  const type = evt.type || '';
+  const data = evt.data || {};
+  if (type === 'connected') return;
+  if (type.startsWith('memory.')) {
+    loadStats();
+    const tab = currentTab();
+    const mine = inPageScope(data.scope || data.memory || {});
+    if (mine && tab === 'memories') { $('#search-q').value = ''; listMemories(); }
+    if (mine && tab === 'graph') loadGraph();
+    if (!mine) return;
+    const msg = {
+      'memory.added': `实时：外部写入 ${data.results?.length ?? 0} 条记忆（新增/更新/删除已自动处理）`,
+      'memory.updated': '实时：1 条记忆已更新',
+      'memory.deleted': '实时：1 条记忆已删除',
+      'memory.cleared': `实时：清空 ${data.deleted ?? 0} 条记忆`,
+    }[type];
+    if (msg) toast(msg);
+  } else if (type.startsWith('block.')) {
+    if (currentTab() === 'blocks') {
+      const inputId = evt.data.scope_type === 'user' ? '#blk-user-scope' : '#blk-agent-scope';
+      if ($(inputId).value === evt.data.scope_id) loadBlocks(evt.data.scope_type);
+    }
+    if (type === 'block.updated') toast('实时：核心块已更新');
+    if (type === 'block.deleted') toast('实时：核心块已删除');
+  }
+}
+function connectWS() {
+  const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+  wsState('实时连接中…');
+  ws = new WebSocket(`${proto}://${location.host}/api/v1/ws`);
+  ws.onopen = () => wsState('实时已连接', true);
+  ws.onmessage = (e) => {
+    try { handleRealtimeEvent(JSON.parse(e.data)); } catch {}
+  };
+  ws.onclose = () => { wsState('实时断开，2 秒后重连', false); setTimeout(connectWS, 2000); };
+  ws.onerror = () => ws.close();
+}
+
+// init — default scope means memories load immediately
+loadWhoami();
+listMemories();
+connectWS();
+loadStats().catch(e => toast(e.message, true));
+</script>
+</body>
+</html>
