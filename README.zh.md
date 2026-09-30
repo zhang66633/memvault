@@ -68,6 +68,10 @@ claude mcp add --transport stdio memvault -- D:\Claude_code\memory\.venv\Scripts
 
 不需要 `.env`。离线默认值是**本地特征哈希嵌入器**（384 维、确定性、零网络）+ **规则抽取器**。把 `.env.example` 复制成 `.env` 就能把任一项换成 OpenAI 兼容端点——`examples/llm_check.py` 会先自检 Key、base URL 与模型，再决定要不要依赖它。
 
+## 在 DeepSeek Harness 里用它
+
+MemVault 本身是通用的 MCP 服务，任何客户端都能调；但 MCP 是**拉取**协议，它没有通道把记忆放进模型的上下文。在 DSH 上补上这一环的是 **[dsh-memvault](https://github.com/zhang66633/dsh-memvault)** 插件：把核心记忆块注入系统提示词、把结束的轮次折成窗口交给本项目的管线、并提供一个浏览/追溯/复核已存记忆的面板。这个分工是刻意的：MemVault 保持通用服务，跟宿主相关的活留在插件里。
+
 ## 对外提供的形式
 
 | 形式 | 是什么 | 数量 |

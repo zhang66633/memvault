@@ -68,6 +68,10 @@ claude mcp add --transport stdio memvault -- D:\Claude_code\memory\.venv\Scripts
 
 No `.env` is required. Offline defaults: **local feature-hashing embedder** (384-dim, deterministic, zero network) + **rule extractor**. Copy `.env.example` to `.env` to switch either one to an OpenAI-compatible endpoint — `examples/llm_check.py` self-tests the key, base URL and models before you rely on them.
 
+## Using it from DeepSeek Harness
+
+MemVault is a plain MCP service, so any client can call it — but a *pull* protocol can never put memory into the model's context on its own. On DSH that gap is filled by **[dsh-memvault](https://github.com/zhang66633/dsh-memvault)**, a plugin that injects the core blocks into the system prompt, folds finished turns into windows and hands each window to this pipeline, and ships a panel to browse, trace and review what was stored. The split is deliberate: MemVault stays a general-purpose service; the harness-specific work lives in the plugin.
+
 ## Surfaces
 
 | Surface | What it is | Count |
