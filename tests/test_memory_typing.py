@@ -40,7 +40,30 @@ STILL_USER = [
     "用户熟悉 PyTorch。",
     "用户习惯使用深色主题。",
     "用户正在开发名为 dsh-memvault 的项目，其面板新增只读浏览视图。",
+    # The 2026-09-30 false positive, reproduced from the real row (mem_005f720b6f15).
+    # It is a genuine collaboration convention about third-party plugin compatibility,
+    # and it was retyped to `procedural` because "会" (in "用户会主动关闭这类 PR") and
+    # "插件" (in another clause) both occurred somewhere in one long sentence.
+    "协作约定：第三方插件/开源依赖的版本适配问题，报告人只提供问题与证据（issue + 复现步骤 + 实测数据），不要代开发者发 PR——用户会主动关闭这类 PR。因此为修 omdsh-dev/dsh-genui#227 与 duhu2000/dsh-mcp-connector#101 提交的 #229、#102 两个 PR 均被他关闭；两条 issue 保留（含补上的运行期/静态证据）。",
 ]
+
+
+def test_signals_must_share_one_clause():
+    """The verb and the technical noun in *different* clauses must not fire.
+
+    This documents the accepted trade-off of the same-clause rule: a technique
+    whose verb and noun are split across clauses is missed by the heuristic. That
+    gap is why retyped rows are surfaced for a human instead of being trusted
+    blindly (see the panel's "自动改型" filter).
+    """
+    assert _looks_procedural("用户熟悉提问，那条命令的参数是 --dry-run。") is False
+
+
+def test_false_positive_from_the_field_stays_a_user_fact():
+    """Pins the exact report: a convention mentioning plugins/PRs is not a technique."""
+    convention = STILL_USER[-1]
+    assert _looks_procedural(convention) is False
+    assert _typed(convention, "user", None) == ("user", None)
 
 
 @pytest.mark.parametrize("fact,expected", MEASURED + [(f, False) for f in STILL_USER])

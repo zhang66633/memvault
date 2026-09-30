@@ -768,6 +768,15 @@ def _is_storable(fact: str) -> bool:
 # its content names something technical. The verb alone would also match a real
 # skill ("用户会 Python", "用户熟悉 PyTorch") -- those stay user facts. The defect
 # was technical *content* wearing a user-attribute shape, not the shape by itself.
+#
+# The verb and the technical noun must sit in the SAME clause. Searching the whole
+# string was too loose: a genuine collaboration convention ("…不要代开发者发 PR
+# ——用户会主动关闭这类 PR…") matched because "会" and "插件" both occurred somewhere
+# in one long sentence. Measured on 2026-09-30, that false positive retyped a real
+# user preference to `procedural`; see docs/DEVLOG.md and the regression test.
+# Accepted trade-off: a technique whose verb and noun live in different clauses is
+# now missed by the heuristic — which is why the panel surfaces retyped rows for a
+# human to judge instead of trusting this classifier to be complete.
 _EPISTEMIC_CLAIM = re.compile(r"(熟悉|掌握|了解|知道|习惯|擅长|熟练|会|能|能够)")
 _TECHNICAL_CONTENT = re.compile(
     r"(文件格式|偏移|命令行|命令|脚本|CLI|API|接口|参数|配置|环境变量|报错|异常|数据库"
@@ -776,6 +785,9 @@ _TECHNICAL_CONTENT = re.compile(
     r"|\.\w{1,5}\b|--\w+|`[^`]+`",
     re.I,
 )
+# Strong clause boundaries only: `、` and `：` stay INSIDE a clause, because they
+# separate items of one statement rather than two statements ("熟悉 A、B、C").
+_CLAUSE_SPLIT = re.compile(r"[，。；！？,;]|\n")
 
 
 def _looks_procedural(fact: str) -> bool:
@@ -787,9 +799,17 @@ def _looks_procedural(fact: str) -> bool:
     the GitHub API push workaround became "用户掌握…Git Data API…". The store keeps
     such rows -- the knowledge is real -- but they belong in `procedural`, not in
     the user's profile.
+
+    Both signals must fall inside one clause (see the note above for the false
+    positive that forced this).
     """
     text = fact or ""
-    return bool("用户" in text and _EPISTEMIC_CLAIM.search(text) and _TECHNICAL_CONTENT.search(text))
+    if "用户" not in text:
+        return False
+    for clause in _CLAUSE_SPLIT.split(text):
+        if _EPISTEMIC_CLAIM.search(clause) and _TECHNICAL_CONTENT.search(clause):
+            return True
+    return False
 
 
 def _typed(fact: str, memory_type: str, metadata: Optional[dict[str, Any]]) -> tuple[str, Optional[dict[str, Any]]]:
