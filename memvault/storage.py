@@ -157,6 +157,8 @@ class Storage:
                     hash        TEXT NOT NULL,
                     embedding   BLOB,
                     metadata    TEXT NOT NULL DEFAULT '{}',
+                    embedder    TEXT,
+                    embed_dim   INTEGER,
                     created_at  TEXT NOT NULL,
                     updated_at  TEXT NOT NULL
                 );
@@ -203,6 +205,17 @@ class Storage:
                 );
                 """
             )
+
+            # Stores written before this existed lack the two columns above. Adding
+            # them is idempotent, and the values are left NULL on purpose: NULL means
+            # "written before we recorded this", which the reader reports as
+            # local/<MEMVAULT_EMBEDDING_DIM> -- the truth for every such row, because
+            # the offline embedder was the only option then. Backfilling a guess would
+            # destroy exactly the information this column exists to carry.
+            columns = {row[1] for row in c.execute("PRAGMA table_info(memories)")}
+            for name, ddl in (("embedder", "TEXT"), ("embed_dim", "INTEGER")):
+                if name not in columns:
+                    c.execute(f"ALTER TABLE memories ADD COLUMN {name} {ddl}")
 
     # ---------------- memories ----------------
 
