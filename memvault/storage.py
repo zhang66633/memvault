@@ -220,16 +220,26 @@ class Storage:
     # ---------------- memories ----------------
 
     def upsert_memory(self, record: dict[str, Any]) -> dict[str, Any]:
+        # Tolerant of callers that do not know the embedder. Three places build records
+        # here and only one of them knows the model, so requiring the key turned a single
+        # omission into twenty broken tests. A missing value means "unknown", which is
+        # exactly what NULL says - the engine's stamp is the one that is authoritative.
+        record.setdefault("embedder", None)
+        record.setdefault("embed_dim", None)
         with self._conn() as c:
             c.execute(
                 """INSERT INTO memories (id, user_id, agent_id, run_id, memory, memory_type,
-                                        hash, embedding, metadata, created_at, updated_at)
+                                        hash, embedding, metadata, embedder, embed_dim,
+                                        created_at, updated_at)
                    VALUES (:id,:user_id,:agent_id,:run_id,:memory,:memory_type,
-                           :hash,:embedding,:metadata,:created_at,:updated_at)
+                           :hash,:embedding,:metadata,:embedder,:embed_dim,
+                           :created_at,:updated_at)
                    ON CONFLICT(id) DO UPDATE SET
                      user_id=excluded.user_id, agent_id=excluded.agent_id, run_id=excluded.run_id,
                      memory=excluded.memory, memory_type=excluded.memory_type, hash=excluded.hash,
-                     embedding=excluded.embedding, metadata=excluded.metadata, updated_at=excluded.updated_at""",
+                     embedding=excluded.embedding, metadata=excluded.metadata,
+                     embedder=excluded.embedder, embed_dim=excluded.embed_dim,
+                     updated_at=excluded.updated_at""",
                 record,
             )
             self._bump(c)

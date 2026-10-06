@@ -28,6 +28,41 @@ from .scopes import ScopeResolver
 from .storage import Storage, now_iso
 from .vector_index import ScopeIndex, cluster_similar, cosine, to_blob
 
+# The dimension the offline embedder defaults to (`MEMVAULT_EMBEDDING_DIM`), reported for
+# rows written before the stamp existed.
+DEFAULT_EMBED_DIM = 384
+
+
+def embedder_of(row: dict) -> tuple:
+    """Which embedder produced a row's vector.
+
+    Prefers the dedicated columns, falls back to the metadata keys an earlier prototype
+    wrote, and finally to `local/<default dim>`: every row from before the stamp was
+    produced by the offline embedder, so that is not a guess. A damaged value is treated
+    the same way instead of raising - this feeds diagnostics, and a diagnostic that
+    crashes on bad data is worse than no diagnostic.
+    """
+    name = row.get("embedder")
+    dim = row.get("embed_dim")
+    if name is None or dim is None:
+        meta = row.get("metadata")
+        if isinstance(meta, str):
+            try:
+                meta = json.loads(meta)
+            except Exception:
+                meta = {}
+        if not isinstance(meta, dict):
+            meta = {}
+        if name is None:
+            name = meta.get("embedder", "local")
+        if dim is None:
+            dim = meta.get("embed_dim", DEFAULT_EMBED_DIM)
+    try:
+        dim = int(dim)
+    except (TypeError, ValueError):
+        dim = DEFAULT_EMBED_DIM
+    return str(name or "local"), dim
+
 # How many per-scope scoring indexes to keep warm. Entries are dropped
 # implicitly whenever the database changes (see `_index_for`).
 _INDEX_CACHE_MAX = 32
@@ -292,7 +327,14 @@ class MemoryEngine:
             "memory_type": memory_type,
             "hash": content_hash(text, user_id, agent_id, run_id),
             "embedding": to_blob(vec),
-            "metadata": json.dumps(metadata or {}, ensure_ascii=False),
+            # Which embedder produced this vector, kept in its own columns: a dimension
+        # change already fails loudly at query time, but a same-dimension switch would
+        # pass that check and silently compare two semantic spaces. Deliberately not in
+        # metadata, which belongs to the caller - an earlier attempt to put it there
+        # broke eight tests asserting on metadata, which was the design saying so.
+        "metadata": json.dumps(metadata or {}, ensure_ascii=False),
+        "embedder": self.config.embedder,
+        "embed_dim": self.embedder.dim,
             "created_at": now_iso(),
             "updated_at": now_iso(),
         }
