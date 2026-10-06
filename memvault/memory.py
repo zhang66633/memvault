@@ -444,7 +444,24 @@ class MemoryEngine:
             keyword_weight=self.config.keyword_weight,
             predicate=predicate,
         )
-        return {"results": [_public(r) for r in results]}
+        # Which embedder produced the vectors that were just compared. A dimension
+        # change raises on its own; a same-dimension switch does not, and would quietly
+        # score two semantic spaces against each other. Counting them here is free: the
+        # index already holds the rows.
+        target = f"{self.config.embedder}/{int(self.embedder.dim)}"
+        stamps: dict[str, int] = {}
+        for row in index.rows:
+            key = "{}/{}".format(*embedder_of(row))
+            stamps[key] = stamps.get(key, 0) + 1
+        stale = sum(count for key, count in stamps.items() if key != target)
+        return {
+            "results": [_public(r) for r in results],
+            # Stated, not implied: an empty "stale" is a real answer, and a non-zero one
+            # means "some of these scores are not comparable - run reindex --apply".
+            "stamps": stamps,
+            "stale": stale,
+            "target": target,
+        }
 
     # ---------------- single-record ops ----------------
 
