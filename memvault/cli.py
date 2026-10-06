@@ -175,6 +175,8 @@ def build_parser() -> argparse.ArgumentParser:
     pu.add_argument("--older-than-days", type=float, help="updated_at older than N days")
     pu.add_argument("--type", choices=["user", "agent", "procedural"])
     pu.add_argument("--apply", action="store_true", help="actually delete (default is a dry-run preview)")
+    ri = sub.add_parser("reindex", help="re-embed rows whose stamp disagrees with the current embedder")
+    ri.add_argument("--apply", action="store_true", help="actually re-embed (default is a dry-run report)")
     return p
 
 
@@ -183,7 +185,9 @@ def main(argv: list[str] | None = None) -> None:
     CONFIG.validate()
     engine = MemoryEngine()
 
-    if ns.cmd == "add":
+    if ns.cmd == "reindex":
+        _dump(engine.reindex(dry_run=not ns.apply))
+    elif ns.cmd == "add":
         messages = (
             _messages_from_stdin() if ns.stdin
             else [{"role": "user", "content": " ".join(ns.message)}]
