@@ -1,3 +1,5 @@
+<p align="center"><img src="docs/overview.png" alt="MemVault 项目介绍" width="100%"></p>
+
 <div align="center">
 
 # MemVault
