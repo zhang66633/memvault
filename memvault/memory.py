@@ -32,6 +32,12 @@ from .vector_index import ScopeIndex, cluster_similar, cosine, to_blob
 # rows written before the stamp existed.
 DEFAULT_EMBED_DIM = 384
 
+# Below this blended score, a search result set is reported as low confidence rather than
+# passed off as an answer. Measured on this store: a query with genuinely matching rows
+# scored 0.63 at the top, while a query with no matching rows at all still produced a
+# 0.479 "best" - so the boundary sits between those two facts, not at zero.
+SEARCH_MIN_SCORE = 0.55
+
 
 def embedder_of(row: dict) -> tuple:
     """Which embedder produced a row's vector.
@@ -465,8 +471,19 @@ class MemoryEngine:
             key = "{}/{}".format(*embedder_of(row))
             stamps[key] = stamps.get(key, 0) + 1
         stale = sum(count for key, count in stamps.items() if key != target)
+        # Nothing matched well is information, not a failure: without this, the caller reads
+        # the least-bad rows as if they were answers - which is what made the search look
+        # broken. Additive: no filtering, no re-ranking.
+        best = results[0]["score"] if results else None
+        low = best is not None and best < SEARCH_MIN_SCORE
         return {
             "results": [_public(r) for r in results],
+            "best": best,
+            "lowConfidence": low,
+            "note": (
+                "no high-confidence match: these are the closest rows available, not answers"
+                if low else None
+            ),
             # Stated, not implied: an empty "stale" is a real answer, and a non-zero one
             # means "some of these scores are not comparable - run reindex --apply".
             "stamps": stamps,
