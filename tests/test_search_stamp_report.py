@@ -46,7 +46,9 @@ def test_a_same_dimension_stray_is_reported_instead_of_hidden():
         engine.storage.close()   # Windows: an open handle breaks TemporaryDirectory cleanup
         assert out["target"] == "local/384"
         assert out["stamps"] == {"local/384": 1, "openai/384": 1}, out["stamps"]
-        assert out["stale"] == 1
+        # stale is reserved for rows that cannot be compared at all (another dimension);
+        # a same-dimension row from another model is reported as unrecorded instead.
+        assert out["stale"] == 0 and out["unrecorded"] == 1
 
 
 def test_a_clean_scope_reports_zero_rather_than_nothing():

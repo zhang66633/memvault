@@ -66,6 +66,9 @@ def test_a_same_dimension_mismatch_is_reported():
         _seed(db, "m_ours", "local", 384)
         report = engine.reindex()
         engine.storage.close()   # see above
-        assert report["to_recompute"] == 1, report
+        # Same dimension, different model: comparable but unproven. Counted as unrecorded
+        # rather than as needing a recompute - both are rewritten by --apply, but only a
+        # dimension mismatch means the scores are meaningless.
+        assert report["to_recompute"] == 0 and report["unrecorded"] == 1, report
         assert report["current"] == {"openai/384": 1, "local/384": 1}
         assert _snapshot(db)[0][1] == "openai", "still untouched after a dry run"

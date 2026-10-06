@@ -50,6 +50,16 @@ def embedder_of(row: dict) -> tuple:
     """
     name = row.get("embedder")
     dim = row.get("embed_dim")
+    if dim is None:
+        # The dimension can be read from the vector itself (float32), which is the honest
+        # half of the answer. The model cannot: an unstamped row from before the stamp
+        # existed is "unknown", not "local" - that guess is what turned 379 unrecorded rows
+        # into 379 "needs recomputing" and would have re-embedded correct vectors.
+        blob = row.get("embedding")
+        if isinstance(blob, (bytes, bytearray)) and len(blob) % 4 == 0 and len(blob) > 0:
+            dim = len(blob) // 4
+        if name is None and dim is not None:
+            return "unknown", int(dim)
     if name is None or dim is None:
         meta = row.get("metadata")
         if isinstance(meta, str):
@@ -60,14 +70,14 @@ def embedder_of(row: dict) -> tuple:
         if not isinstance(meta, dict):
             meta = {}
         if name is None:
-            name = meta.get("embedder", "local")
+            name = meta.get("embedder", "unknown")
         if dim is None:
             dim = meta.get("embed_dim", DEFAULT_EMBED_DIM)
     try:
         dim = int(dim)
     except (TypeError, ValueError):
         dim = DEFAULT_EMBED_DIM
-    return str(name or "local"), dim
+    return str(name or "unknown"), dim
 
 # How many per-scope scoring indexes to keep warm. Entries are dropped
 # implicitly whenever the database changes (see `_index_for`).
@@ -344,15 +354,28 @@ class MemoryEngine:
         rows = self.storage.iter_memories()
         current = {}
         need = []
+        unrecorded = 0
         for row in rows:
             stamp = embedder_of(row)
             current[f"{stamp[0]}/{stamp[1]}"] = current.get(f"{stamp[0]}/{stamp[1]}", 0) + 1
-            if stamp != target:
+            # Two different problems, counted separately: a different *dimension* cannot be
+            # compared at all, while an unrecorded *model* at the same dimension can be
+            # compared but not proven. Recomputing fixes both; only the first is urgent.
+            if target[1] is not None and stamp[1] != target[1]:
+                need.append(row)
+            elif stamp[0] != target[0]:
+                unrecorded += 1
                 need.append(row)
         report = {
             "total": len(rows),
             "matching": len(rows) - len(need),
-            "to_recompute": len(need),
+            # With no target dimension yet (a remote model that has not been called),
+            # nothing can be shown to be incompatible: the honest count is zero, and the
+            # rows are reported as unrecorded instead. Apply resolves the dimension first
+            # and then recomputes the union.
+            "to_recompute": len([r for r in need
+                                 if target[1] is not None and embedder_of(r)[1] != target[1]]),
+            "unrecorded": unrecorded,
             "current": current,
             "target": "{}/{}".format(target[0], "unknown" if target[1] is None else target[1]),
             # Stated so a provisional count is not mistaken for a measured one: with no
@@ -468,9 +491,15 @@ class MemoryEngine:
         target = f"{self.config.embedder}/{int(self.embedder.dim)}"
         stamps: dict[str, int] = {}
         for row in index.rows:
-            key = "{}/{}".format(*embedder_of(row))
+            key = "{}/{}".format(embedder_of(row)[0], index.dim)
             stamps[key] = stamps.get(key, 0) + 1
-        stale = sum(count for key, count in stamps.items() if key != target)
+        # "stale" is reserved for rows that cannot be compared with this query at all
+        # (another dimension). A same-dimension row whose model is merely unrecorded is
+        # counted separately: calling it stale was a false alarm that would have justified
+        # re-embedding a store whose vectors were already correct.
+        target_dim = target.split("/")[1]
+        stale = sum(count for key, count in stamps.items() if key.split("/")[1] != target_dim)
+        unrecorded = sum(count for key, count in stamps.items() if key.split("/")[1] == target_dim and key != target)
         # Nothing matched well is information, not a failure: without this, the caller reads
         # the least-bad rows as if they were answers - which is what made the search look
         # broken. Additive: no filtering, no re-ranking.
@@ -488,6 +517,7 @@ class MemoryEngine:
             # means "some of these scores are not comparable - run reindex --apply".
             "stamps": stamps,
             "stale": stale,
+            "unrecorded": unrecorded,
             "target": target,
         }
 

@@ -54,5 +54,7 @@ def test_reading_prefers_columns_then_metadata_then_default():
     from memvault.memory import embedder_of
     assert embedder_of({"embedder": "openai", "embed_dim": 1536}) == ("openai", 1536)
     assert embedder_of({"metadata": '{"embedder": "openai", "embed_dim": 1536}'}) == ("openai", 1536)
-    assert embedder_of({"metadata": "{}"}) == ("local", 384)
-    assert embedder_of({"metadata": "{bad json"}) == ("local", 384)
+    # No stamp and no measurable blob: the model is unknown, and saying "local" would be
+    # the guess that made 379 correct rows look like they needed re-embedding.
+    assert embedder_of({"metadata": "{}"}) == ("unknown", 384)
+    assert embedder_of({"metadata": "{bad json"}) == ("unknown", 384)
