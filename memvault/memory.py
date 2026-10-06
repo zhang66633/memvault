@@ -333,7 +333,7 @@ class MemoryEngine:
         if self.event_manager is not None:
             self.event_manager.publish(event_type, data)
 
-    def reindex(self, dry_run: bool = True) -> dict:
+    def reindex(self, dry_run: bool = True, record_only: bool = False) -> dict:
         """Re-embed rows whose stamp disagrees with the current embedder.
 
         `dry_run` is the default on purpose: switching embedders is a decision with a
@@ -384,12 +384,25 @@ class MemoryEngine:
             "dryRun": bool(dry_run),
         }
         if dry_run or not need:
-            return {**report, "recomputed": 0}
+            return {**report, "recomputed": 0, "recorded": 0}
+        if record_only:
+            # The vectors are already in the target space; only the record is missing. Write
+            # the stamp beside the existing blob - no embedding call, and the bytes stay as
+            # they are. Skipped entirely when the target dimension is still unknown, because
+            # then there is nothing to compare the stored dimension against.
+            recorded = 0
+            if target[1] is not None:
+                for row in rows:
+                    name, dim = embedder_of(row)
+                    if name != target[0] and dim == target[1]:
+                        self.storage.update_embedding(row["id"], row["embedding"], target[0], target[1])
+                        recorded += 1
+            return {**report, "recomputed": 0, "recorded": recorded}
         resolved_dim = self.embedder.dim if self.embedder.dim is not None else target[1]
         for row in need:
             vec = self.embedder.embed_one(row["memory"])
             self.storage.update_embedding(row["id"], to_blob(vec), target[0], resolved_dim)
-        return {**report, "recomputed": len(need)}
+        return {**report, "recomputed": len(need), "recorded": 0}
 
     def _persist(self, memory_id, text, vec, user_id, agent_id, run_id, metadata, memory_type):
         record = {

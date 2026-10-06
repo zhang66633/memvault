@@ -177,6 +177,8 @@ def build_parser() -> argparse.ArgumentParser:
     pu.add_argument("--apply", action="store_true", help="actually delete (default is a dry-run preview)")
     ri = sub.add_parser("reindex", help="re-embed rows whose stamp disagrees with the current embedder")
     ri.add_argument("--apply", action="store_true", help="actually re-embed (default is a dry-run report)")
+    ri.add_argument("--record-only", action="store_true",
+                    help="write the current embedder's stamp beside existing vectors (no embedding calls)")
     return p
 
 
@@ -186,7 +188,7 @@ def main(argv: list[str] | None = None) -> None:
     engine = MemoryEngine()
 
     if ns.cmd == "reindex":
-        _dump(engine.reindex(dry_run=not ns.apply))
+        _dump(engine.reindex(dry_run=not (ns.apply or ns.record_only), record_only=ns.record_only))
     elif ns.cmd == "add":
         messages = (
             _messages_from_stdin() if ns.stdin
