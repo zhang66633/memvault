@@ -275,6 +275,21 @@ class Storage:
         with self._conn() as c:
             return [dict(r) for r in c.execute(sql, args).fetchall()]
 
+    def update_embedding(self, memory_id: str, blob: bytes, embedder: str, dim: int) -> bool:
+        """Replace one row's vector and its stamp, and nothing else.
+
+        Deliberately narrow: going through `upsert_memory` would rewrite created_at and
+        metadata too, and a re-embed is not a reason to touch either.
+        """
+        with self._conn() as c:
+            cur = c.execute(
+                "UPDATE memories SET embedding=?, embedder=?, embed_dim=? WHERE id=?",
+                (blob, embedder, int(dim), memory_id),
+            )
+            if cur.rowcount:
+                self._bump(c)
+            return bool(cur.rowcount)
+
     def count_memories(self, user_id: Optional[str] = None,
                        agent_id: Optional[str] = None,
                        run_id: Optional[str] = None) -> int:

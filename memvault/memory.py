@@ -317,6 +317,40 @@ class MemoryEngine:
         if self.event_manager is not None:
             self.event_manager.publish(event_type, data)
 
+    def reindex(self, dry_run: bool = True) -> dict:
+        """Re-embed rows whose stamp disagrees with the current embedder.
+
+        `dry_run` is the default on purpose: switching embedders is a decision with a
+        cost (one embedding call per changed row, plus network and privacy), and the
+        caller should see that cost before paying it. Dimension changes already fail
+        loudly at query time; this exists for the case that does *not* - another model
+        with the same dimension, where two semantic spaces would otherwise be compared
+        silently.
+        """
+        target = (self.config.embedder, int(self.embedder.dim))
+        rows = self.storage.iter_memories()
+        current = {}
+        need = []
+        for row in rows:
+            stamp = embedder_of(row)
+            current[f"{stamp[0]}/{stamp[1]}"] = current.get(f"{stamp[0]}/{stamp[1]}", 0) + 1
+            if stamp != target:
+                need.append(row)
+        report = {
+            "total": len(rows),
+            "matching": len(rows) - len(need),
+            "to_recompute": len(need),
+            "current": current,
+            "target": f"{target[0]}/{target[1]}",
+            "dryRun": bool(dry_run),
+        }
+        if dry_run or not need:
+            return {**report, "recomputed": 0}
+        for row in need:
+            vec = self.embedder.embed_one(row["memory"])
+            self.storage.update_embedding(row["id"], to_blob(vec), target[0], target[1])
+        return {**report, "recomputed": len(need)}
+
     def _persist(self, memory_id, text, vec, user_id, agent_id, run_id, metadata, memory_type):
         record = {
             "id": memory_id or f"mem_{uuid.uuid4().hex[:12]}",
