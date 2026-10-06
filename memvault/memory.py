@@ -327,7 +327,14 @@ class MemoryEngine:
         with the same dimension, where two semantic spaces would otherwise be compared
         silently.
         """
-        target = (self.config.embedder, int(self.embedder.dim))
+        # A remote embedder learns its dimension on its first call (None until then), so
+        # this cannot assume an int. A dry run must not spend an API call to find out;
+        # apply discovers it once, up front, because every row is about to need it.
+        target_dim = self.embedder.dim
+        if target_dim is None and not dry_run:
+            self.embedder.embed_one("dimension probe")
+            target_dim = self.embedder.dim
+        target = (self.config.embedder, None if target_dim is None else int(target_dim))
         rows = self.storage.iter_memories()
         current = {}
         need = []
@@ -341,14 +348,18 @@ class MemoryEngine:
             "matching": len(rows) - len(need),
             "to_recompute": len(need),
             "current": current,
-            "target": f"{target[0]}/{target[1]}",
+            "target": "{}/{}".format(target[0], "unknown" if target[1] is None else target[1]),
+            # Stated so a provisional count is not mistaken for a measured one: with no
+            # dimension to compare against, every row counts as needing a recompute.
+            "dimUnknown": target[1] is None,
             "dryRun": bool(dry_run),
         }
         if dry_run or not need:
             return {**report, "recomputed": 0}
+        resolved_dim = self.embedder.dim if self.embedder.dim is not None else target[1]
         for row in need:
             vec = self.embedder.embed_one(row["memory"])
-            self.storage.update_embedding(row["id"], to_blob(vec), target[0], target[1])
+            self.storage.update_embedding(row["id"], to_blob(vec), target[0], resolved_dim)
         return {**report, "recomputed": len(need)}
 
     def _persist(self, memory_id, text, vec, user_id, agent_id, run_id, metadata, memory_type):
