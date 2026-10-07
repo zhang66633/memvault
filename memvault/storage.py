@@ -224,6 +224,11 @@ class Storage:
         # here and only one of them knows the model, so requiring the key turned a single
         # omission into twenty broken tests. A missing value means "unknown", which is
         # exactly what NULL says - the engine's stamp is the one that is authoritative.
+        #
+        # "Missing" is not "empty" on the way back in either: an update that carries no
+        # stamp must not erase the stamp already on the row. It did, because the conflict
+        # clause copied excluded.embedder (NULL) over it - which is how rows that had been
+        # stamped turned back into "unknown" after a consolidation.
         record.setdefault("embedder", None)
         record.setdefault("embed_dim", None)
         with self._conn() as c:
@@ -238,7 +243,8 @@ class Storage:
                      user_id=excluded.user_id, agent_id=excluded.agent_id, run_id=excluded.run_id,
                      memory=excluded.memory, memory_type=excluded.memory_type, hash=excluded.hash,
                      embedding=excluded.embedding, metadata=excluded.metadata,
-                     embedder=excluded.embedder, embed_dim=excluded.embed_dim,
+                     embedder=COALESCE(excluded.embedder, embedder),
+                     embed_dim=COALESCE(excluded.embed_dim, embed_dim),
                      updated_at=excluded.updated_at""",
                 record,
             )
